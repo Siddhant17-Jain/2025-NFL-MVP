@@ -1,0 +1,47 @@
+import pandas as pd
+
+# Load the combined data
+file_path = "/Defense Files/Combined_Team_Defense.csv"
+data = pd.read_csv(file_path)
+
+# Convert percentage strings to numeric values if they exist
+for column in data.columns[1:]:  # Skip the "Team" column
+    if data[column].dtype == 'object' and data[column].str.contains('%').any():
+        data[column] = data[column].str.replace('%', '').astype(float)
+
+# Define the columns where lower is better and where higher is better
+lower_is_better = ["EPA/Play", "Success %", "EPA/Pass", "EPA/Rush","Tot Yds","Tot 1stD", "PA"]
+higher_is_better = ["INT %","Sack %",  "EXP", "TO%"]
+
+# Normalize the data
+for column in data.columns[1:]:  # Skip the "Team" column
+    league_avg = data[column].mean()  # Calculate league average
+    if column in lower_is_better:
+        # If values are negative, shift the column to be all positive
+        if data[column].min() < 0:
+            shift = abs(data[column].min()) + 1  # Add a constant to shift all values to > 0
+            data[column] += shift
+            league_avg += shift
+        # Normalize: lower values are better
+        data[column] = (league_avg / data[column]) * 100
+    elif column in higher_is_better:
+        # If values are negative, shift the column to be all positive
+        if data[column].min() < 0:
+            shift = abs(data[column].min()) + 1  # Add a constant to shift all values to > 0
+            data[column] += shift
+            league_avg += shift
+        # Normalize: higher values are better
+        data[column] = (data[column] / league_avg) * 100
+
+# Ensure all values are greater than zero (as a safety measure)
+data.iloc[:, 1:] = data.iloc[:, 1:].clip(lower=0)
+
+# Round all numeric columns to 2 decimal places
+data.iloc[:, 1:] = data.iloc[:, 1:].round(2)
+
+# Save the normalized data to a new CSV file
+output_file_path = "../Defense Files/Normalized_Combined_Defense.csv"
+data.to_csv(output_file_path, index=False)
+
+# Display a message to confirm successful saving
+print(f"Normalized data saved to '{output_file_path}'")
